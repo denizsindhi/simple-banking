@@ -1,59 +1,212 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+## Simple Banking System (Laravel + Vue 3 + Inertia)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a **simple in-memory banking system** built on top of Laravel 12, Vue 3, Inertia.js, and Vite. It focuses on **correct business rules**, a clean service/repository/domain layer, and deterministic behaviour without a database.
 
-## About Laravel
+All data (customers, accounts, transactions) lives in **static arrays persisted in the session**, so it resets when you restart PHP or clear your browser session.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Domain overview
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Customer**
+  - `id`, `name`, `status: active | blocked | closed`
+  - A customer may own **multiple accounts**.
 
-## Learning Laravel
+- **Account**
+  - `id`, `customer_id`, `type: personal | savings | business`
+  - `currency: EUR`, `balance` (stored in cents), `status: active | blocked | closed`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- **Transaction**
+  - `id`, `type: deposit | withdrawal | transfer`
+  - `amount` (in cents), `timestamp`
+  - `source_account_id` (nullable), `target_account_id` (nullable)
+  - `status: success | rejected`, `rejection_reason` (nullable)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+All balance-changing operations go through `TransactionService`. **You never change `Account::balance` directly** outside of that service.
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Business rules
 
-### Premium Partners
+These rules are enforced in the domain layer (services + repositories):
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- A **customer may own multiple accounts**.
+- A **blocked customer cannot perform operations** (their accounts are blocked when the customer is blocked).
+- A **customer can only be closed if all accounts are closed**.
+- **Balance must never be negative** (withdraw/transfer reject when insufficient funds).
+- **Blocked accounts** cannot perform operations.
+- **Closed accounts** are read-only.
+- An **account can only be closed if the balance is zero**.
+- **Account balance must never be modified directly**.
+- **All balance changes go through `TransactionService`** (deposit, withdraw, transfer).
+- **Transaction history is immutable** (append-only in `TransactionRepository`).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Core backend structure
 
-## Code of Conduct
+- **Enums** (`app/Enums`)
+  - `CustomerStatus`, `AccountStatus`, `AccountType`, `TransactionStatus`, `TransactionType`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- **Models** (`app/Models`)
+  - Plain PHP models: `Customer`, `Account`, `Transaction`.
 
-## Security Vulnerabilities
+- **Repositories** (`app/Repositories`)
+  - `CustomerRepository`, `AccountRepository`, `TransactionRepository`.
+  - Use **static arrays + Laravel session** to persist state across requests.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- **Services** (`app/Services`)
+  - `CustomerService` – create/block/close customers and enforce customer rules.
+  - `AccountService` – open/block/close accounts, fetch accounts.
+  - `TransactionService` – the **only place** where balances change.
 
-## License
+- **Controllers** (`app/Http/Controllers`)
+  - `CustomerController`, `AccountController`, `TransactionController`.
+  - Thin controllers that:
+    - Delegate all business logic to services.
+    - Convert domain exceptions into user-friendly **flash messages**.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- **Frontend**
+  - Vue 3 + Inertia.js, Vite bundler.
+  - Layout: `resources/js/Layouts/AppLayout.vue` – sidebar navigation, flash messages.
+  - Pages:
+    - `Customers/Index`, `Customers/Create`, `Customers/Show`.
+    - `Accounts/Create`, `Accounts/Show`.
+    - `Transactions/Deposit`, `Transactions/Withdraw`, `Transactions/Transfer`.
+
+---
+
+### Running the app
+
+#### 1. Install dependencies
+
+```bash
+composer install
+npm install
+cp .env.example .env  # if not already present
+php artisan key:generate
+```
+
+> Note: migrations are present but the current implementation uses **in-memory + session** repositories, not the database.
+
+#### 2. Start dev environment (recommended)
+
+The easiest way to run everything is via Composer:
+
+```bash
+composer dev
+```
+
+This will start:
+
+- `php artisan serve` (Laravel app at `http://127.0.0.1:8000`)
+- `php artisan queue:listen` and `php artisan pail` (for logging / background)
+- `npm run dev:vite` (Vite dev server for assets)
+
+#### 3. Start via npm only (what you asked for)
+
+You can now simply run:
+
+```bash
+npm run dev
+```
+
+This will:
+
+- Start `php artisan serve`.
+- Start the Vite dev server (`npm run dev:vite`).
+- On macOS, automatically open `http://127.0.0.1:8000` in your default browser.
+
+> If you prefer to control PHP and Vite separately, you can still run:
+>
+> ```bash
+> php artisan serve
+> npm run dev:vite
+> ```
+
+---
+
+### UI overview
+
+The UI is a simple **single-page app** with a sidebar and multiple screens:
+
+- **Sidebar navigation** (in `AppLayout.vue`):
+  - `Customers` – list, block, close, and navigate to a customer detail page.
+  - `Open Account` – open an account for a selected customer.
+  - `Deposit` – deposit into a selected account.
+  - `Withdraw` – withdraw from a selected account.
+  - `Transfer` – transfer between accounts.
+
+- **Flash messages** (top of every page):
+  - Green banner for **success**, e.g. “Account closed successfully.”
+  - Red banner for **rule violations**, e.g. “Account can only be closed when balance is zero.”
+
+- **Customer detail page** (`Customers/Show.vue`):
+  - Shows **customer status**.
+  - Lists all the customer’s accounts with balances, types, and statuses.
+  - Rows and a "View account" button navigate to the account detail.
+  - Shows an aggregated **transaction history** across all the customer’s accounts.
+
+- **Account detail page** (`Accounts/Show.vue`):
+  - Shows **current balance** and status.
+  - Buttons to **Block account** and **Close account** (enforcing rules).
+  - Shows immutable **transaction history** for that account.
+
+- **Transaction pages**:
+  - **Deposit/Withdraw**:
+    - Dropdown of accounts: `#id – CustomerName (type)`.
+    - Live **current balance** display for the selected account.
+  - **Transfer**:
+    - Source & target account dropdowns (with customer names and types).
+    - Live balance display for both source and target.
+
+---
+
+### Development notes
+
+- **State & persistence**
+  - Repositories store state in static arrays and mirror it into the Laravel **session**.
+  - Restarting the PHP server or clearing the browser session will reset data.
+
+- **Error handling**
+  - Services throw `RuntimeException` for rule violations.
+  - Controllers catch these and redirect back with `session()->with('error', ...)`.
+  - Flash errors are displayed in the layout.
+
+- **Extending the system**
+  - To add new operations (e.g. interest accrual), implement them **inside `TransactionService`**, so all balance rules stay centralized.
+  - To change persistence, you can swap repository implementations (e.g. from session to database) without touching services or controllers.
+
+---
+
+### Useful scripts
+
+- **Install & build**
+
+```bash
+composer setup   # installs dependencies, sets up .env, migrates, npm install + build
+```
+
+- **Full dev stack via Composer** (PHP + queues + logs + Vite):
+
+```bash
+composer dev
+```
+
+- **Full dev stack via npm** (PHP + Vite + auto-open browser):
+
+```bash
+npm run dev
+```
+
+- **Vite only**:
+
+```bash
+npm run dev:vite
+```
+
+---
+
+### License
+
+This project is based on the Laravel framework and is licensed under the [MIT License](https://opensource.org/licenses/MIT). 
