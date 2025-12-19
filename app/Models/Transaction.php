@@ -4,37 +4,36 @@ namespace App\Models;
 
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
-use DateTimeImmutable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Transaction
+class Transaction extends Model
 {
-    public int $id;
-    public TransactionType $type;
-    public int $amount;
-    public DateTimeImmutable $timestamp;
-    public ?int $source_account_id;
-    public ?int $target_account_id;
-    public TransactionStatus $status;
-    public ?string $rejection_reason;
+    protected $fillable = [
+        'type',
+        'amount',
+        'timestamp',
+        'source_account_id',
+        'target_account_id',
+        'status',
+        'rejection_reason',
+    ];
 
-    public function __construct(
-        int $id,
-        TransactionType $type,
-        int $amount,
-        DateTimeImmutable $timestamp,
-        ?int $sourceAccountId,
-        ?int $targetAccountId,
-        TransactionStatus $status,
-        ?string $rejectionReason
-    ) {
-        $this->id = $id;
-        $this->type = $type;
-        $this->amount = $amount;
-        $this->timestamp = $timestamp;
-        $this->source_account_id = $sourceAccountId;
-        $this->target_account_id = $targetAccountId;
-        $this->status = $status;
-        $this->rejection_reason = $rejectionReason;
+    protected $casts = [
+        'type' => TransactionType::class,
+        'status' => TransactionStatus::class,
+        'amount' => 'integer',
+        'timestamp' => 'datetime',
+    ];
+
+    public function sourceAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'source_account_id');
+    }
+
+    public function targetAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'target_account_id');
     }
 }
 
