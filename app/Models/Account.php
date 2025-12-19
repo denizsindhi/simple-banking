@@ -4,30 +4,39 @@ namespace App\Models;
 
 use App\Enums\AccountStatus;
 use App\Enums\AccountType;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Account
+class Account extends Model
 {
-    public int $id;
-    public int $customer_id;
-    public AccountType $type;
-    public string $currency;
-    public int $balance;
-    public AccountStatus $status;
+    protected $fillable = [
+        'customer_id',
+        'type',
+        'currency',
+        'balance',
+        'status',
+    ];
 
-    public function __construct(
-        int $id,
-        int $customerId,
-        AccountType $type,
-        string $currency,
-        int $balance,
-        AccountStatus $status
-    ) {
-        $this->id = $id;
-        $this->customer_id = $customerId;
-        $this->type = $type;
-        $this->currency = $currency;
-        $this->balance = $balance;
-        $this->status = $status;
+    protected $casts = [
+        'type' => AccountType::class,
+        'status' => AccountStatus::class,
+        'balance' => 'integer',
+    ];
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function sourceTransactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'source_account_id');
+    }
+
+    public function targetTransactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'target_account_id');
     }
 
     public function isActive(): bool

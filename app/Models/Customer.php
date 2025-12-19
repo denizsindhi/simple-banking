@@ -3,18 +3,23 @@
 namespace App\Models;
 
 use App\Enums\CustomerStatus;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Customer
+class Customer extends Model
 {
-    public int $id;
-    public string $name;
-    public CustomerStatus $status;
+    protected $fillable = [
+        'name',
+        'status',
+    ];
 
-    public function __construct(int $id, string $name, CustomerStatus $status)
+    protected $casts = [
+        'status' => CustomerStatus::class,
+    ];
+
+    public function accounts(): HasMany
     {
-        $this->id = $id;
-        $this->name = $name;
-        $this->status = $status;
+        return $this->hasMany(Account::class);
     }
 
     public function isActive(): bool

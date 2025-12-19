@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Transaction;
 use App\Repositories\AccountRepository;
 use App\Repositories\TransactionRepository;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -160,20 +161,38 @@ class TransactionService
             );
         }
 
-        // Atomicity: we apply both mutations in memory first, then persist both.
-        $source->decreaseBalance($amount);
-        $target->increaseBalance($amount);
+        // Atomicity: wrap in database transaction to ensure all-or-nothing.
+        return DB::transaction(function () use ($source, $target, $amount) {
+            // Reload accounts within transaction to get latest balance
+            $source = $this->accounts->find($source->id);
+            $target = $this->accounts->find($target->id);
 
-        $this->accounts->save($source);
-        $this->accounts->save($target);
+            // Double-check balance after reload (prevent race conditions)
+            if ($source->balance < $amount) {
+                return $this->reject(
+                    TransactionType::TRANSFER,
+                    $amount,
+                    $source->id,
+                    $target->id,
+                    'Insufficient funds on source account.',
+                );
+            }
 
-        return $this->transactions->log(
-            TransactionType::TRANSFER,
-            $amount,
-            $source->id,
-            $target->id,
-            TransactionStatus::SUCCESS,
-        );
+            // Apply both mutations
+            $source->decreaseBalance($amount);
+            $target->increaseBalance($amount);
+
+            $this->accounts->save($source);
+            $this->accounts->save($target);
+
+            return $this->transactions->log(
+                TransactionType::TRANSFER,
+                $amount,
+                $source->id,
+                $target->id,
+                TransactionStatus::SUCCESS,
+            );
+        });
     }
 
     /**
