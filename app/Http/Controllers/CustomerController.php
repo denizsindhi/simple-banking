@@ -20,10 +20,17 @@ class CustomerController extends Controller
     ) {
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        // Get flash messages from session and pass them directly
+        $flash = [
+            'success' => $request->session()->get('success'),
+            'error' => $request->session()->get('error'),
+        ];
+        
         return Inertia::render('Customers/Index', [
             'customers' => $this->customers->list(),
+            'flash' => $flash,
         ]);
     }
 
@@ -40,7 +47,8 @@ class CustomerController extends Controller
 
         $this->customers->create($data['name']);
 
-        return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
+        return redirect()->route('customers.index')
+            ->with('success', 'Customer created successfully.');
     }
 
     public function block(int $id): RedirectResponse
@@ -49,6 +57,17 @@ class CustomerController extends Controller
             $this->customers->block($id);
 
             return redirect()->route('customers.index')->with('success', 'Customer blocked and associated accounts blocked.');
+        } catch (RuntimeException $e) {
+            return redirect()->route('customers.index')->with('error', $e->getMessage());
+        }
+    }
+
+    public function unblock(int $id): RedirectResponse
+    {
+        try {
+            $this->customers->unblock($id);
+
+            return redirect()->route('customers.index')->with('success', 'Customer unblocked and associated accounts unblocked.');
         } catch (RuntimeException $e) {
             return redirect()->route('customers.index')->with('error', $e->getMessage());
         }

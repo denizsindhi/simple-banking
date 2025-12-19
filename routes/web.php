@@ -12,6 +12,7 @@ Route::get('/customers', [CustomerController::class, 'index'])->name('customers.
 Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
 Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
 Route::post('/customers/{id}/block', [CustomerController::class, 'block'])->name('customers.block');
+Route::post('/customers/{id}/unblock', [CustomerController::class, 'unblock'])->name('customers.unblock');
 Route::post('/customers/{id}/close', [CustomerController::class, 'close'])->name('customers.close');
 Route::get('/customers/{id}', [CustomerController::class, 'show'])->name('customers.show');
 
@@ -19,6 +20,7 @@ Route::get('/customers/{id}', [CustomerController::class, 'show'])->name('custom
 Route::get('/accounts/create', [AccountController::class, 'create'])->name('accounts.create');
 Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store');
 Route::post('/accounts/{id}/block', [AccountController::class, 'block'])->name('accounts.block');
+Route::post('/accounts/{id}/unblock', [AccountController::class, 'unblock'])->name('accounts.unblock');
 Route::post('/accounts/{id}/close', [AccountController::class, 'close'])->name('accounts.close');
 Route::get('/accounts/{id}', [AccountController::class, 'show'])->name('accounts.show');
 

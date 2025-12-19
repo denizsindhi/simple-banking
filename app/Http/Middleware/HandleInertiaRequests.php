@@ -35,13 +35,30 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Get flash messages from session
+        // Note: session()->get() retrieves flash messages without removing them
+        // They are automatically removed after the next request
+        $success = $request->session()->get('success');
+        $error = $request->session()->get('error');
+        
         return [
             ...parent::share($request),
             // Simple flash bag for user-friendly success/error messages.
+            // Flash messages are automatically available in session
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
+                'success' => $success,
+                'error' => $error,
             ],
         ];
+    }
+
+    /**
+     * Set the root template that's loaded on the first page visit.
+     *
+     * @see https://inertiajs.com/server-side-setup#root-template
+     */
+    public function rootView(Request $request): string
+    {
+        return parent::rootView($request);
     }
 }

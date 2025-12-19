@@ -23,7 +23,7 @@ const csrfToken =
         <div>
           <h1 class="text-2xl font-semibold text-slate-900">Customers</h1>
           <p class="text-xs text-slate-500 mt-1">
-            Manage customer lifecycle: create, block, close.
+            Manage customer lifecycle: create, block, unblock, close.
           </p>
         </div>
         <Link
@@ -81,6 +81,21 @@ const csrfToken =
                 :disabled="customer.status !== 'active'"
               >
                 Block
+              </button>
+            </form>
+
+            <!-- Unblock: unblock customer and their accounts -->
+            <form
+              method="post"
+              :action="`/customers/${customer.id}/unblock`"
+            >
+              <input type="hidden" name="_token" :value="csrfToken">
+              <button
+                type="submit"
+                class="px-2 py-1 text-xs rounded-md border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40"
+                :disabled="customer.status !== 'blocked'"
+              >
+                Unblock
               </button>
             </form>
 

@@ -1,10 +1,25 @@
 <script setup>
-import { computed } from 'vue';
+import { watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import { useToast } from '../composables/useToast';
+import ToastContainer from '../components/ToastContainer.vue';
 
-// usePage() returns a reactive object; props is reactive in-place
 const page = usePage();
-const flash = computed(() => (page.props && page.props.flash) ? page.props.flash : {});
+const { success, error } = useToast();
+
+// Watch for flash messages and convert them to toasts
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success) {
+      success(flash.success);
+    }
+    if (flash?.error) {
+      error(flash.error);
+    }
+  },
+  { deep: true, immediate: true }
+);
 
 const navItems = [
   { label: 'Customers', href: '/customers' },
@@ -72,28 +87,13 @@ function isActive(href) {
 
       <section class="flex-1 p-6 overflow-y-auto">
         <div class="max-w-5xl mx-auto space-y-4">
-          <!-- Flash messages -->
-          <div v-if="flash.success || flash.error" class="space-y-2">
-            <div
-              v-if="flash.success"
-              class="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 shadow-sm"
-            >
-              <span class="mt-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              <p class="font-medium">{{ flash.success }}</p>
-            </div>
-            <div
-              v-if="flash.error"
-              class="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 shadow-sm"
-            >
-              <span class="mt-0.5 h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-              <p class="font-medium">{{ flash.error }}</p>
-            </div>
-          </div>
-
           <slot />
         </div>
       </section>
     </main>
+    
+    <!-- Toast notifications -->
+    <ToastContainer />
   </div>
 </template>
 
