@@ -61,6 +61,34 @@ class CustomerService
         return $customer;
     }
 
+    public function unblock(int $customerId): Customer
+    {
+        $customer = $this->requireCustomer($customerId);
+
+        if ($customer->isClosed()) {
+            throw new RuntimeException('Closed customers cannot be unblocked.');
+        }
+
+        if ($customer->isActive()) {
+            throw new RuntimeException('Customer is already active.');
+        }
+
+        // Unblock the customer
+        $customer->status = CustomerStatus::ACTIVE;
+        $this->customers->save($customer);
+
+        // Unblock all blocked accounts (but not closed accounts)
+        $accounts = $this->accounts->forCustomer($customer->id);
+        foreach ($accounts as $account) {
+            if ($account->isBlocked()) {
+                $account->status = \App\Enums\AccountStatus::ACTIVE;
+                $this->accounts->save($account);
+            }
+        }
+
+        return $customer;
+    }
+
     public function close(int $customerId): Customer
     {
         $customer = $this->requireCustomer($customerId);

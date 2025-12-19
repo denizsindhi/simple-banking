@@ -61,6 +61,21 @@ const csrfToken =
           </button>
         </form>
 
+        <!-- Unblock: unblock account (only if customer is not blocked) -->
+        <form
+          method="post"
+          :action="`/accounts/${account.id}/unblock`"
+        >
+          <input type="hidden" name="_token" :value="csrfToken">
+          <button
+            type="submit"
+            class="px-3 py-1.5 text-xs rounded-md border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40"
+            :disabled="account.status !== 'blocked'"
+          >
+            Unblock account
+          </button>
+        </form>
+
         <!-- Account can be closed only if balance == 0, enforced in AccountService -->
         <form
           method="post"

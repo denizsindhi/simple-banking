@@ -78,6 +78,30 @@ class AccountService
         return $account;
     }
 
+    public function unblock(int $accountId): Account
+    {
+        $account = $this->requireAccount($accountId);
+
+        if ($account->isClosed()) {
+            throw new RuntimeException('Closed accounts cannot be unblocked.');
+        }
+
+        if ($account->isActive()) {
+            throw new RuntimeException('Account is already active.');
+        }
+
+        // Check if the customer is blocked - if so, cannot unblock individual accounts
+        $customer = $this->customers->find($account->customer_id);
+        if ($customer && $customer->isBlocked()) {
+            throw new RuntimeException('Cannot unblock account: customer is blocked. Unblock the customer first.');
+        }
+
+        $account->status = AccountStatus::ACTIVE;
+        $this->accounts->save($account);
+
+        return $account;
+    }
+
     public function close(int $accountId): Account
     {
         $account = $this->requireAccount($accountId);

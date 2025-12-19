@@ -69,6 +69,17 @@ class AccountController extends Controller
         }
     }
 
+    public function unblock(int $id): RedirectResponse
+    {
+        try {
+            $this->accounts->unblock($id);
+
+            return redirect()->route('accounts.show', $id)->with('success', 'Account unblocked successfully.');
+        } catch (RuntimeException $e) {
+            return redirect()->route('accounts.show', $id)->with('error', $e->getMessage());
+        }
+    }
+
     public function close(int $id): RedirectResponse
     {
         try {
@@ -80,14 +91,21 @@ class AccountController extends Controller
         }
     }
 
-    public function show(int $id): Response
+    public function show(int $id, Request $request): Response
     {
         $account = $this->accounts->show($id);
         $history = $this->transactions->historyForAccount($id);
+        
+        // Get flash messages from session and pass them directly
+        $flash = [
+            'success' => $request->session()->get('success'),
+            'error' => $request->session()->get('error'),
+        ];
 
         return Inertia::render('Accounts/Show', [
             'account' => $account,
             'transactions' => $history,
+            'flash' => $flash,
         ]);
     }
 }
